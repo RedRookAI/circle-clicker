@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Circle Clicker</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100svh; background: #111827; color: #f8fafc; }
+    header { position: absolute; top: 9vh; width: 100%; text-align: center; padding: 0 16px; }
+    h1 { margin: 0 0 12px; font-size: 1.5rem; font-weight: 600; }
+    #score { margin: 0; font-size: 2rem; font-variant-numeric: tabular-nums; }
+    #rate { color: #a5f3fc; margin: 8px 0; }
+    main { min-height: 100svh; display: grid; place-items: center; }
+    #circle { width: min(220px, 56vw, 40svh); aspect-ratio: 1; border-radius: 50%; border: 3px solid #a5f3fc; background: #22d3ee; color: #082f49; font: 700 2rem system-ui, sans-serif; cursor: pointer; touch-action: manipulation; user-select: none; box-shadow: 0 8px 0 #0891b2, 0 12px 45px #22d3ee25; transition: transform 80ms, box-shadow 80ms; }
+    #circle:hover { background: #67e8f9; }
+    #circle:active { transform: translateY(5px); box-shadow: 0 3px 0 #0891b2; }
+    #circle:focus-visible { outline: 4px solid #f8fafc; outline-offset: 8px; }
+    footer { position: absolute; bottom: 8vh; width: 100%; text-align: center; padding: 0 16px; color: #cbd5e1; }
+    .shop { position: absolute; right: 24px; top: 50svh; transform: translateY(-50%); width: 250px; padding: 20px; background: #1e293b; border: 1px solid #475569; border-radius: 16px; }
+    .shop h2 { margin: 0 0 16px; }
+    .item h3 { margin: 0 0 8px; }
+    .item p { color: #cbd5e1; line-height: 1.5; margin: 8px 0; }
+    .buy { width: 100%; margin-top: 8px; padding: 12px; font: 600 1rem system-ui, sans-serif; border: 0; border-radius: 8px; background: #67e8f9; color: #082f49; cursor: pointer; }
+    .buy:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+    .buy:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+    @media (max-width: 900px) {
+      main { min-height: 65svh; }
+      header { top: 24px; }
+      .shop { position: static; transform: none; width: min(90%, 420px); margin: 0 auto 24px; }
+      footer { position: static; padding-bottom: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header><h1>Circle Clicker</h1><p id="score" role="status" aria-live="polite">Points: 0</p><p id="rate">0 points per second</p></header>
+  <main><button id="circle" type="button" aria-label="Click circle to earn one point">+1</button></main>
+  <aside class="shop" aria-label="Shop"><h2>Shop</h2><div id="shop-items"></div></aside>
+  <footer>Click the circle. Earn 1 point.<br><small>Progress resets when you reload.</small></footer>
+  <script>
+    let points = 0;
+    const score = document.querySelector('#score');
+    const rateDisplay = document.querySelector('#rate');
+
+    // Add future shop items here. Each entry gets its own ownership and price.
+    const shopCatalog = [
+      { id: 'generator', name: 'Generator', description: 'Adds 1 point per second. Buy more to increase production.', basePrice: 10, priceGrowth: 1.5, pointsPerSecond: 1 }
+    ];
+    const owned = Object.fromEntries(shopCatalog.map(item => [item.id, 0]));
+    const itemElements = new Map();
+    const priceOf = item => Math.ceil(item.basePrice * item.priceGrowth ** owned[item.id]);
+    const productionRate = () => shopCatalog.reduce((total, item) => total + owned[item.id] * item.pointsPerSecond, 0);
+    let lastProductionTime = performance.now();
+    let partialPoint = 0;
+
+    function collectProduction() {
+      const now = performance.now();
+      partialPoint += (now - lastProductionTime) / 1000 * productionRate();
+      lastProductionTime = now;
+      const earned = Math.floor(partialPoint + 1e-9);
+      points += earned;
+      partialPoint = Math.max(0, partialPoint - earned);
+    }
+
+    function render() {
+      score.textContent = `Points: ${points}`;
+      const rate = productionRate();
+      rateDisplay.textContent = `${rate} ${rate === 1 ? 'point' : 'points'} per second`;
+      for (const item of shopCatalog) {
+        const elements = itemElements.get(item.id);
+        elements.owned.textContent = `Owned: ${owned[item.id]}`;
+        elements.buy.textContent = `Buy — ${priceOf(item)} points`;
+        elements.buy.disabled = points < priceOf(item);
+      }
+    }
+
+    for (const item of shopCatalog) {
+      const card = document.createElement('section');
+      card.className = 'item';
+      card.dataset.item = item.id;
+      const title = document.createElement('h3');
+      title.textContent = item.name;
+      const description = document.createElement('p');
+      description.textContent = item.description;
+      const ownership = document.createElement('p');
+      ownership.className = 'owned';
+      const buy = document.createElement('button');
+      buy.type = 'button';
+      buy.className = 'buy';
+      buy.addEventListener('click', () => {
+        collectProduction();
+        const price = priceOf(item);
+        if (points >= price) {
+          points -= price;
+          owned[item.id] += 1;
+        }
+        render();
+      });
+      card.append(title, description, ownership, buy);
+      document.querySelector('#shop-items').append(card);
+      itemElements.set(item.id, {owned: ownership, buy});
+    }
+
+    document.querySelector('#circle').addEventListener('click', () => {
+      collectProduction();
+      points += 1;
+      render();
+    });
+    setInterval(() => { collectProduction(); render(); }, 100);
+    render();
+  </script>
+</body>
+</html>
