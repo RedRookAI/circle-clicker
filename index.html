@@ -7,18 +7,21 @@
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100svh; background: #111827; color: #f8fafc; }
-    header { position: absolute; top: 9vh; width: 100%; text-align: center; padding: 0 16px; }
+    body { display: grid; grid-template-columns: minmax(0, 1fr) 298px; grid-template-rows: auto 1fr auto; margin: 0; min-height: 100svh; background: #111827; color: #f8fafc; }
+    header { grid-column: 1 / -1; text-align: center; padding: 28px 16px 8px; }
     h1 { margin: 0 0 12px; font-size: 1.5rem; font-weight: 600; }
     #score { margin: 0; font-size: 2rem; font-variant-numeric: tabular-nums; }
     #rate { color: #a5f3fc; margin: 8px 0; }
-    main { min-height: 100svh; display: grid; place-items: center; }
-    #circle { width: min(220px, 56vw, 40svh); aspect-ratio: 1; border-radius: 50%; border: 3px solid #a5f3fc; background: #22d3ee; color: #082f49; font: 700 2rem system-ui, sans-serif; cursor: pointer; touch-action: manipulation; user-select: none; box-shadow: 0 8px 0 #0891b2, 0 12px 45px #22d3ee25; transition: transform 80ms, box-shadow 80ms; }
-    #circle:hover { background: #67e8f9; }
-    #circle:active { transform: translateY(5px); box-shadow: 0 3px 0 #0891b2; }
-    #circle:focus-visible { outline: 4px solid #f8fafc; outline-offset: 8px; }
-    footer { position: absolute; bottom: 8vh; width: 100%; text-align: center; padding: 0 16px; color: #cbd5e1; pointer-events: none; }
-    .shop { position: absolute; right: 24px; top: 50svh; transform: translateY(-50%); width: 250px; padding: 20px; background: #1e293b; border: 1px solid #475569; border-radius: 16px; }
+    main { min-width: 0; min-height: 340px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 24px; padding: 32px; }
+    .circle { width: min(220px, 36vw, 40svh); flex-shrink: 0; aspect-ratio: 1; border-radius: 50%; border: 3px solid #a5f3fc; background: #22d3ee; color: #082f49; font: 700 2rem system-ui, sans-serif; cursor: pointer; touch-action: manipulation; user-select: none; box-shadow: 0 8px 0 #0891b2, 0 12px 45px #22d3ee25; transition: transform 80ms, box-shadow 80ms; }
+    .circle:hover { background: #67e8f9; }
+    .circle:active { transform: translateY(5px); box-shadow: 0 3px 0 #0891b2; }
+    .circle:focus-visible { outline: 4px solid #f8fafc; outline-offset: 8px; }
+    #second-circle { background: #c4b5fd; border-color: #ddd6fe; box-shadow: 0 8px 0 #8b5cf6, 0 12px 45px #a78bfa25; }
+    #second-circle:hover { background: #ddd6fe; }
+    #second-circle:active { box-shadow: 0 3px 0 #8b5cf6; }
+    footer { grid-column: 1 / -1; text-align: center; padding: 24px 16px; color: #cbd5e1; pointer-events: none; }
+    .shop { align-self: center; margin: 16px 24px 16px 0; width: 274px; padding: 20px; background: #1e293b; border: 1px solid #475569; border-radius: 16px; }
     .shop h2 { margin: 0 0 16px; }
     .item h3 { margin: 0 0 8px; }
     .item + .item { margin-top: 18px; padding-top: 18px; border-top: 1px solid #475569; }
@@ -27,8 +30,8 @@
     .buy:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
     .buy:focus-visible { outline: 3px solid white; outline-offset: 4px; }
     @media (max-width: 900px) {
-      main { min-height: 65svh; }
-      header { top: 24px; }
+      body { display: block; }
+      main { min-height: 340px; padding: 24px 16px; gap: 16px; }
       .shop { position: static; transform: none; width: min(90%, 420px); margin: 0 auto 24px; }
       footer { position: static; padding-bottom: 24px; }
     }
@@ -36,7 +39,7 @@
 </head>
 <body>
   <header><h1>Circle Clicker</h1><p id="score" role="status" aria-live="polite">Points: 0</p><p id="rate">0 points per second</p></header>
-  <main><button id="circle" type="button" aria-label="Click circle to earn one point">+1</button></main>
+  <main><button class="circle" id="circle" type="button" aria-label="Click circle to earn one point">+1</button><button class="circle" id="second-circle" type="button" aria-label="Click second circle to earn one point" hidden>+1</button></main>
   <aside class="shop" aria-label="Shop"><h2>Shop</h2><div id="shop-items"></div></aside>
   <footer><span id="click-hint">Click the circle. Earn 1 point.</span><br><small>Progress resets when you reload.</small></footer>
   <script>
@@ -47,7 +50,8 @@
     // Add future shop items here. Each entry gets its own ownership and price.
     const shopCatalog = [
       { id: 'generator', name: 'Generator', description: 'The first earns 1 point per second. Each new generator makes every generator 50% stronger.', basePrice: 10, priceGrowth: 1.5, pointsPerSecond: 1, productionGrowth: 1.5 },
-      { id: 'click-power', name: 'Click Power', description: 'Adds 1 point to every click. Buy again to increase your click power further.', basePrice: 25, priceGrowth: 1.5, pointsPerSecond: 0, pointsPerClick: 1 }
+      { id: 'click-power', name: 'Click Power', description: 'Adds 1 point to every click. Buy again to increase your click power further.', basePrice: 25, priceGrowth: 1.5, pointsPerSecond: 0, pointsPerClick: 1 },
+      { id: 'second-circle', name: 'Second Circle', description: 'Unlocks another circle to click. Both circles share your score and Click Power.', basePrice: 100, priceGrowth: 1, pointsPerSecond: 0, maxOwned: 1 }
     ];
     const owned = Object.fromEntries(shopCatalog.map(item => [item.id, 0]));
     const itemElements = new Map();
@@ -73,15 +77,19 @@
       const rate = productionRate();
       rateDisplay.textContent = `${formatRate(rate)} ${rate === 1 ? 'point' : 'points'} per second`;
       const perClick = clickPower();
-      const circle = document.querySelector('#circle');
-      circle.textContent = `+${perClick}`;
-      circle.setAttribute('aria-label', `Click circle to earn ${perClick} ${perClick === 1 ? 'point' : 'points'}`);
-      document.querySelector('#click-hint').textContent = `Click the circle. Earn ${perClick} ${perClick === 1 ? 'point' : 'points'}.`;
+      const secondUnlocked = owned['second-circle'] > 0;
+      document.querySelector('#second-circle').hidden = !secondUnlocked;
+      document.querySelectorAll('.circle').forEach((circle, index) => {
+        circle.textContent = `+${perClick}`;
+        circle.setAttribute('aria-label', `Click ${index ? 'second circle' : 'circle'} to earn ${perClick} ${perClick === 1 ? 'point' : 'points'}`);
+      });
+      document.querySelector('#click-hint').textContent = `Click ${secondUnlocked ? 'either circle' : 'the circle'}. Earn ${perClick} ${perClick === 1 ? 'point' : 'points'}.`;
       for (const item of shopCatalog) {
         const elements = itemElements.get(item.id);
         elements.owned.textContent = `Owned: ${owned[item.id]}`;
-        elements.buy.textContent = `Buy — ${priceOf(item)} points`;
-        elements.buy.disabled = points < priceOf(item);
+        const soldOut = owned[item.id] >= (item.maxOwned ?? Infinity);
+        elements.buy.textContent = soldOut ? 'Purchased' : `Buy — ${priceOf(item)} points`;
+        elements.buy.disabled = soldOut || points < priceOf(item);
         if (elements.production) {
           const count = owned[item.id];
           const current = rateFor(item, count);
@@ -114,7 +122,7 @@
       buy.addEventListener('click', () => {
         collectProduction();
         const price = priceOf(item);
-        if (points >= price) {
+        if (points >= price && owned[item.id] < (item.maxOwned ?? Infinity)) {
           points -= price;
           owned[item.id] += 1;
         }
@@ -126,11 +134,12 @@
       itemElements.set(item.id, {owned: ownership, buy, production});
     }
 
-    document.querySelector('#circle').addEventListener('click', () => {
+    document.querySelectorAll('.circle').forEach(circle => circle.addEventListener('click', () => {
+      if (circle.hidden) return;
       collectProduction();
       points += clickPower();
       render();
-    });
+    }));
     setInterval(() => { collectProduction(); render(); }, 100);
     render();
   </script>
