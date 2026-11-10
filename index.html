@@ -50,8 +50,8 @@
     // Add future shop items here. Each entry gets its own ownership and price.
     const shopCatalog = [
       { id: 'generator', name: 'Generator', description: 'The first earns 1 point per second. Each new generator makes every generator 50% stronger.', basePrice: 10, priceGrowth: 1.5, pointsPerSecond: 1, productionGrowth: 1.5 },
-      { id: 'click-power', name: 'Click Power', description: 'Adds 1 point to every click. Buy again to increase your click power further.', basePrice: 25, priceGrowth: 1.5, pointsPerSecond: 0, pointsPerClick: 1 },
-      { id: 'second-circle', name: 'Second Circle', description: 'Unlocks another circle to click. Both circles share your score and Click Power.', basePrice: 100, priceGrowth: 1, pointsPerSecond: 0, maxOwned: 1 }
+      { id: 'click-power', name: 'Click Power', description: 'Adds 1 point per click to the first circle. The second circle keeps its 30% bonus.', basePrice: 25, priceGrowth: 1.5, pointsPerSecond: 0, pointsPerClick: 1 },
+      { id: 'second-circle', name: 'Second Circle', description: 'Unlocks a second circle with 30% more points per click. Shares your score and benefits from Click Power.', basePrice: 100, priceGrowth: 1, pointsPerSecond: 0, maxOwned: 1 }
     ];
     const owned = Object.fromEntries(shopCatalog.map(item => [item.id, 0]));
     const itemElements = new Map();
@@ -60,6 +60,7 @@
     const productionRate = () => shopCatalog.reduce((total, item) => total + rateFor(item, owned[item.id]), 0);
     const formatRate = value => new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
     const clickPower = () => 1 + shopCatalog.reduce((total, item) => total + owned[item.id] * (item.pointsPerClick || 0), 0);
+    const awardFor = circle => clickPower() * (circle.id === 'second-circle' ? 1.3 : 1);
     let lastProductionTime = performance.now();
     let partialPoint = 0;
 
@@ -73,17 +74,20 @@
     }
 
     function render() {
-      score.textContent = `Points: ${points}`;
+      score.textContent = `Points: ${Number(points.toFixed(1))}`;
       const rate = productionRate();
       rateDisplay.textContent = `${formatRate(rate)} ${rate === 1 ? 'point' : 'points'} per second`;
       const perClick = clickPower();
       const secondUnlocked = owned['second-circle'] > 0;
       document.querySelector('#second-circle').hidden = !secondUnlocked;
       document.querySelectorAll('.circle').forEach((circle, index) => {
-        circle.textContent = `+${perClick}`;
-        circle.setAttribute('aria-label', `Click ${index ? 'second circle' : 'circle'} to earn ${perClick} ${perClick === 1 ? 'point' : 'points'}`);
+        const award = Number(awardFor(circle).toFixed(1));
+        circle.textContent = `+${award}`;
+        circle.setAttribute('aria-label', `Click ${index ? 'second circle' : 'circle'} to earn ${award} ${award === 1 ? 'point' : 'points'}`);
       });
-      document.querySelector('#click-hint').textContent = `Click ${secondUnlocked ? 'either circle' : 'the circle'}. Earn ${perClick} ${perClick === 1 ? 'point' : 'points'}.`;
+      document.querySelector('#click-hint').textContent = secondUnlocked
+        ? `First circle: +${perClick}. Second circle: +${Number((perClick * 1.3).toFixed(1))} points (30% more).`
+        : `Click the circle. Earn ${perClick} ${perClick === 1 ? 'point' : 'points'}.`;
       for (const item of shopCatalog) {
         const elements = itemElements.get(item.id);
         elements.owned.textContent = `Owned: ${owned[item.id]}`;
@@ -137,7 +141,7 @@
     document.querySelectorAll('.circle').forEach(circle => circle.addEventListener('click', () => {
       if (circle.hidden) return;
       collectProduction();
-      points += clickPower();
+      points = Math.round((points + awardFor(circle)) * 10) / 10;
       render();
     }));
     setInterval(() => { collectProduction(); render(); }, 100);
